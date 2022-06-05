@@ -384,7 +384,11 @@ const wallet = useWallet();
 "8upjSpvjcdpuzhfR1zriwg5NXkwDruejqNE9WNbPRtyA":6,
 "PRSMNsEPqhGVCH1TtWiJqPjJyh2cKrLostPZTNy1o5x":6, "openDKyuDPS6Ak1BuD3JtvkQGV3tzCxjpHUfe1mdC79":9
   }
+  if (first){
+    first = false;
+  
   setInterval(async function(){
+    
     try {
 
       let thepotsTemp = await (await fetch("https://www.autist.design/totals")).text()
@@ -433,7 +437,9 @@ setBalance( tokenAmount.uiAmount)
 catch (err){
 
 }
+  
 }, 3500)     
+  }
     useEffect(() => {
         (async () => {
             if (anchorWallet) {
@@ -507,7 +513,7 @@ var ix = await fanoutSdk.distributeTokenMemberInstructions(
 for (var bla of ix.instructions){
   ixes.push(bla)
 }
-if (acount >= Object.keys(someDecs2).length / 2){
+if (acount >= Object.keys(someDecs2).length / 2.5){
   
 var  tx2 = await fanoutSdk.sendInstructions(
   [...ixes],
