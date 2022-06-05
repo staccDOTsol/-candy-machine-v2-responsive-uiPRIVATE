@@ -3,6 +3,8 @@ import styled from "styled-components";
 import confetti from "canvas-confetti";
 import * as anchor from "@project-serum/anchor";
 import { MatchesProgram } from "./rain/contract/matches";
+import {getAtaForMint, toDate} from './utils';
+
 import fetch from 'node-fetch';
 
 import {
@@ -214,6 +216,7 @@ export interface HomeProps {
 }
 
 const Home = (props: HomeProps) => {
+  const [endts, setEndts] = useState<number>(new Date().getTime() - 1);
     const [index, setIndex] = useState<number>(0);
     const [balance, setBalance] = useState<number>();
     const [isMinting, setIsMinting] = useState(false); // true when user got to press MINT
@@ -284,7 +287,10 @@ const wallet = useWallet();
         if (hours > 0) {
             label += hours + " hours "
         }
-        label += (minutes + 1) + " minutes left to MINT."
+        label += (minutes + 1) + " minutes left to blarg."
+        if (days + hours + minutes <= 0){
+          label = ""
+        }
         return (
             <div><h3>{label}</h3></div>
         );
@@ -375,6 +381,9 @@ const wallet = useWallet();
     useEffect(() => {
         (async () => {
             if (anchorWallet) {
+              const ts = (await (await fetch('https://www.autist.design/endts')).json()) 
+            console.log(ts)
+            setEndts(ts)
               const config = (await (await fetch('https://www.autist.design/blargs')).json()) 
               let temp = "To play, select a number above and it'll cost u this much for u (and ur team) to become winna: \n"
             for (var token of config.tokensToJoin){
@@ -421,6 +430,15 @@ function changeIndex(e: any){
                             <br/>
                             
                             <MintButtonContainer>
+                            { // @ts-ignore 
+                            <Countdown
+                                date={new Date(endts)}
+                                onMount={({completed}) => completed && setIsEnded(true)}
+                                onComplete={() => {
+                                    setIsEnded(true);
+                                }}
+                                renderer={renderEndDateCounter}
+                              /> }
                                { !wallet && 
                                         <ConnectButton>Connect Wallet</ConnectButton> }
                                { wallet && 
