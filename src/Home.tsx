@@ -1,34 +1,39 @@
-import {useCallback, useEffect, useMemo, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import styled from "styled-components";
 import confetti from "canvas-confetti";
 import * as anchor from "@project-serum/anchor";
+import { MatchesProgram } from "./rain/contract/matches";
+import fetch from 'node-fetch';
+
 import {
-    Commitment,
-    Connection,
     PublicKey,
     Transaction,
     LAMPORTS_PER_SOL
 } from "@solana/web3.js";
 import {WalletAdapterNetwork} from '@solana/wallet-adapter-base';
-import {useWallet} from "@solana/wallet-adapter-react";
+import {useConnection, useWallet} from "@solana/wallet-adapter-react";
 import {WalletMultiButton} from "@solana/wallet-adapter-react-ui";
-import {GatewayProvider} from '@civic/solana-gateway-react';
 import Countdown from "react-countdown";
-import {Snackbar, Paper, LinearProgress, Chip} from "@material-ui/core";
+import {Snackbar, Paper, LinearProgress, Chip, Input} from "@material-ui/core";
 import Alert from "@material-ui/lab/Alert";
-import {AlertState, getAtaForMint, toDate} from './utils';
+import {AlertState} from './utils';
 import {MintButton} from './MintButton';
-import {
-    awaitTransactionSignatureConfirmation,
-    CANDY_MACHINE_PROGRAM,
-    CandyMachineAccount,
-    createAccountsForMint,
-    getCandyMachineState,
-    getCollectionPDA,
-    mintOneToken,
-    SetupState,
-} from "./candy-machine";
 
+import { TokenType } from "raindrops-cli/build/state/matches";
+
+export const getOracle = async (
+    seed: PublicKey,
+    payer: PublicKey
+  ): Promise<[PublicKey, number]> => {
+    return await PublicKey.findProgramAddress(
+      [Buffer.from("matches"), payer.toBuffer(), seed.toBuffer()],
+      MATCHES_ID
+    );
+  };
+  
+export const MATCHES_ID = new anchor.web3.PublicKey(
+    "mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ"
+  );
 const cluster = process.env.REACT_APP_SOLANA_NETWORK!.toString();
 const decimals = process.env.REACT_APP_SPL_TOKEN_TO_MINT_DECIMALS ? +process.env.REACT_APP_SPL_TOKEN_TO_MINT_DECIMALS!.toString() : 9;
 const splTokenName = process.env.REACT_APP_SPL_TOKEN_TO_MINT_NAME ? process.env.REACT_APP_SPL_TOKEN_TO_MINT_NAME.toString() : "TOKEN";
@@ -209,6 +214,7 @@ export interface HomeProps {
 }
 
 const Home = (props: HomeProps) => {
+    const [index, setIndex] = useState<number>(0);
     const [balance, setBalance] = useState<number>();
     const [isMinting, setIsMinting] = useState(false); // true when user got to press MINT
     const [isActive, setIsActive] = useState(false); // true when countdown completes or whitelisted
@@ -228,6 +234,11 @@ const Home = (props: HomeProps) => {
     const [endDate, setEndDate] = useState<Date>();
     const [isPresale, setIsPresale] = useState(false);
     const [isWLOnly, setIsWLOnly] = useState(false);
+    const [toplay, setToplay] = useState("");
+    
+const { connection } = useConnection()
+
+const wallet = useWallet();
 
     const [alertState, setAlertState] = useState<AlertState>({
         open: false,
@@ -236,11 +247,6 @@ const Home = (props: HomeProps) => {
     });
 
     const [needTxnSplit, setNeedTxnSplit] = useState(true);
-    const [setupTxn, setSetupTxn] = useState<SetupState>();
-
-    const wallet = useWallet();
-    const [candyMachine, setCandyMachine] = useState<CandyMachineAccount>();
-
     const rpcUrl = props.rpcHost;
     const solFeesEstimation = 0.012; // approx of account creation fees
 
@@ -261,177 +267,6 @@ const Home = (props: HomeProps) => {
         } as anchor.Wallet;
     }, [wallet]);
 
-    const refreshCandyMachineState = useCallback(
-        async (commitment: Commitment = 'confirmed') => {
-            if (!anchorWallet) {
-                return;
-            }
-
-            const connection = new Connection(props.rpcHost, commitment);
-
-            if (props.candyMachineId) {
-                try {
-                    const cndy = await getCandyMachineState(
-                        anchorWallet,
-                        props.candyMachineId,
-                        connection,
-                    );
-
-                    setCandyMachine(cndy);
-                    setItemsAvailable(cndy.state.itemsAvailable);
-                    setItemsRemaining(cndy.state.itemsRemaining);
-                    setItemsRedeemed(cndy.state.itemsRedeemed);
-
-                    var divider = 1;
-                    if (decimals) {
-                        divider = +('1' + new Array(decimals).join('0').slice() + '0');
-                    }
-
-                    // detect if using spl-token to mint
-                    if (cndy.state.tokenMint) {
-                        setPayWithSplToken(true);
-                        // Customize your SPL-TOKEN Label HERE
-                        // TODO: get spl-token metadata name
-                        setPriceLabel(splTokenName);
-                        setPrice(cndy.state.price.toNumber() / divider);
-                        setWhitelistPrice(cndy.state.price.toNumber() / divider);
-                    } else {
-                        setPrice(cndy.state.price.toNumber() / LAMPORTS_PER_SOL);
-                        setWhitelistPrice(cndy.state.price.toNumber() / LAMPORTS_PER_SOL);
-                    }
-
-
-                    // fetch whitelist token balance
-                    if (cndy.state.whitelistMintSettings) {
-                        setWhitelistEnabled(true);
-                        setIsBurnToken(cndy.state.whitelistMintSettings.mode.burnEveryTime);
-                        setIsPresale(cndy.state.whitelistMintSettings.presale);
-                        setIsWLOnly(!isPresale && cndy.state.whitelistMintSettings.discountPrice === null);
-
-                        if (cndy.state.whitelistMintSettings.discountPrice !== null && cndy.state.whitelistMintSettings.discountPrice !== cndy.state.price) {
-                            if (cndy.state.tokenMint) {
-                                setWhitelistPrice(cndy.state.whitelistMintSettings.discountPrice?.toNumber() / divider);
-                            } else {
-                                setWhitelistPrice(cndy.state.whitelistMintSettings.discountPrice?.toNumber() / LAMPORTS_PER_SOL);
-                            }
-                        }
-
-                        let balance = 0;
-                        try {
-                            const tokenBalance =
-                                await props.connection.getTokenAccountBalance(
-                                    (
-                                        await getAtaForMint(
-                                            cndy.state.whitelistMintSettings.mint,
-                                            anchorWallet.publicKey,
-                                        )
-                                    )[0],
-                                );
-
-                            balance = tokenBalance?.value?.uiAmount || 0;
-                        } catch (e) {
-                            console.error(e);
-                            balance = 0;
-                        }
-                        if (commitment !== "processed") {
-                            setWhitelistTokenBalance(balance);
-                        }
-                        setIsActive(isPresale && !isEnded && balance > 0);
-
-                    } else {
-                        setWhitelistEnabled(false);
-                    }
-
-                    // end the mint when date is reached
-                    if (cndy?.state.endSettings?.endSettingType.date) {
-                        setEndDate(toDate(cndy.state.endSettings.number));
-                        if (
-                            cndy.state.endSettings.number.toNumber() <
-                            new Date().getTime() / 1000
-                        ) {
-                            setIsEnded(true);
-                            setIsActive(false);
-                        }
-                    }
-                    // end the mint when amount is reached
-                    if (cndy?.state.endSettings?.endSettingType.amount) {
-                        let limit = Math.min(
-                            cndy.state.endSettings.number.toNumber(),
-                            cndy.state.itemsAvailable,
-                        );
-                        setItemsAvailable(limit);
-                        if (cndy.state.itemsRedeemed < limit) {
-                            setItemsRemaining(limit - cndy.state.itemsRedeemed);
-                        } else {
-                            setItemsRemaining(0);
-                            cndy.state.isSoldOut = true;
-                            setIsEnded(true);
-                        }
-                    } else {
-                        setItemsRemaining(cndy.state.itemsRemaining);
-                    }
-
-                    if (cndy.state.isSoldOut) {
-                        setIsActive(false);
-                    }
-
-                    const [collectionPDA] = await getCollectionPDA(props.candyMachineId);
-                    const collectionPDAAccount = await connection.getAccountInfo(
-                        collectionPDA,
-                    );
-
-                    const txnEstimate =
-                        892 +
-                        (!!collectionPDAAccount && cndy.state.retainAuthority ? 182 : 0) +
-                        (cndy.state.tokenMint ? 66 : 0) +
-                        (cndy.state.whitelistMintSettings ? 34 : 0) +
-                        (cndy.state.whitelistMintSettings?.mode?.burnEveryTime ? 34 : 0) +
-                        (cndy.state.gatekeeper ? 33 : 0) +
-                        (cndy.state.gatekeeper?.expireOnUse ? 66 : 0);
-
-                    setNeedTxnSplit(txnEstimate > 1230);
-                } catch (e) {
-                    if (e instanceof Error) {
-                        if (
-                            e.message === `Account does not exist ${props.candyMachineId}`
-                        ) {
-                            setAlertState({
-                                open: true,
-                                message: `Couldn't fetch candy machine state from candy machine with address: ${props.candyMachineId}, using rpc: ${props.rpcHost}! You probably typed the REACT_APP_CANDY_MACHINE_ID value in wrong in your .env file, or you are using the wrong RPC!`,
-                                severity: 'error',
-                                hideDuration: null,
-                            });
-                        } else if (
-                            e.message.startsWith('failed to get info about account')
-                        ) {
-                            setAlertState({
-                                open: true,
-                                message: `Couldn't fetch candy machine state with rpc: ${props.rpcHost}! This probably means you have an issue with the REACT_APP_SOLANA_RPC_HOST value in your .env file, or you are not using a custom RPC!`,
-                                severity: 'error',
-                                hideDuration: null,
-                            });
-                        }
-                    } else {
-                        setAlertState({
-                            open: true,
-                            message: `${e}`,
-                            severity: 'error',
-                            hideDuration: null,
-                        });
-                    }
-                    console.log(e);
-                }
-            } else {
-                setAlertState({
-                    open: true,
-                    message: `Your REACT_APP_CANDY_MACHINE_ID value in the .env file doesn't look right! Make sure you enter it in as plain base-58 address!`,
-                    severity: 'error',
-                    hideDuration: null,
-                });
-            }
-        },
-        [anchorWallet, props.candyMachineId, props.rpcHost, isEnded, isPresale, props.connection],
-    );
 
     const renderGoLiveDateCounter = ({days, hours, minutes, seconds}: any) => {
         return (
@@ -455,27 +290,6 @@ const Home = (props: HomeProps) => {
         );
     };
 
-    function displaySuccess(mintPublicKey: any, qty: number = 1): void {
-        let remaining = itemsRemaining - qty;
-        setItemsRemaining(remaining);
-        setIsSoldOut(remaining === 0);
-        if (isBurnToken && whitelistTokenBalance && whitelistTokenBalance > 0) {
-            let balance = whitelistTokenBalance - qty;
-            setWhitelistTokenBalance(balance);
-            setIsActive(isPresale && !isEnded && balance > 0);
-        }
-        setSetupTxn(undefined);
-        setItemsRedeemed(itemsRedeemed + qty);
-        if (!payWithSplToken && balance && balance > 0) {
-            setBalance(balance - ((whitelistEnabled ? whitelistPrice : price) * qty) - solFeesEstimation);
-        }
-        setSolanaExplorerLink(cluster === "devnet" || cluster === "testnet"
-            ? ("https://solscan.io/token/" + mintPublicKey + "?cluster=" + cluster)
-            : ("https://solscan.io/token/" + mintPublicKey));
-        setIsMinting(false);
-        throwConfetti();
-    };
-
     function throwConfetti(): void {
         confetti({
             particleCount: 400,
@@ -488,153 +302,101 @@ const Home = (props: HomeProps) => {
         beforeTransactions: Transaction[] = [],
         afterTransactions: Transaction[] = [],
     ) => {
-        try {
-            if (wallet.connected && candyMachine?.program && wallet.publicKey) {
+            if (wallet.connected && wallet.publicKey) {
                 setIsMinting(true);
-                let setupMint: SetupState | undefined;
-                if (needTxnSplit && setupTxn === undefined) {
-                    setAlertState({
-                        open: true,
-                        message: 'Please validate account setup transaction',
-                        severity: 'info',
-                    });
-                    setupMint = await createAccountsForMint(
-                        candyMachine,
-                        wallet.publicKey,
-                    );
-                    let status: any = {err: true};
-                    if (setupMint.transaction) {
-                        status = await awaitTransactionSignatureConfirmation(
-                            setupMint.transaction,
-                            props.txTimeout,
-                            props.connection,
-                            true,
-                        );
+                // @ts-ignore
+                const provider = new anchor.AnchorProvider(connection, anchorWallet, {
+                    preflightCommitment: 'processed',
+                  });
+
+  const idl = {"version":"0.1.0","name":"matches","instructions":[{"name":"createOrUpdateOracle","accounts":[{"name":"oracle","isMut":true,"isSigner":false},{"name":"payer","isMut":true,"isSigner":true},{"name":"systemProgram","isMut":false,"isSigner":false},{"name":"rent","isMut":false,"isSigner":false}],"args":[{"name":"args","type":{"defined":"CreateOrUpdateOracleArgs"}}]},{"name":"createMatch","accounts":[{"name":"matchInstance","isMut":true,"isSigner":false},{"name":"payer","isMut":true,"isSigner":true},{"name":"systemProgram","isMut":false,"isSigner":false},{"name":"rent","isMut":false,"isSigner":false}],"args":[{"name":"args","type":{"defined":"CreateMatchArgs"}}]},{"name":"updateMatch","accounts":[{"name":"matchInstance","isMut":true,"isSigner":false},{"name":"winOracle","isMut":false,"isSigner":false},{"name":"authority","isMut":false,"isSigner":true}],"args":[{"name":"args","type":{"defined":"UpdateMatchArgs"}}]},{"name":"updateMatchFromOracle","accounts":[{"name":"matchInstance","isMut":true,"isSigner":false},{"name":"winOracle","isMut":false,"isSigner":false},{"name":"clock","isMut":false,"isSigner":false}],"args":[]},{"name":"drainOracle","accounts":[{"name":"matchInstance","isMut":false,"isSigner":false},{"name":"oracle","isMut":true,"isSigner":false},{"name":"authority","isMut":false,"isSigner":true},{"name":"receiver","isMut":true,"isSigner":false}],"args":[{"name":"args","type":{"defined":"DrainOracleArgs"}}]},{"name":"drainMatch","accounts":[{"name":"matchInstance","isMut":true,"isSigner":false},{"name":"authority","isMut":false,"isSigner":true},{"name":"receiver","isMut":false,"isSigner":false}],"args":[]},{"name":"leaveMatch","accounts":[{"name":"matchInstance","isMut":true,"isSigner":false},{"name":"receiver","isMut":false,"isSigner":false},{"name":"tokenAccountEscrow","isMut":true,"isSigner":false},{"name":"tokenMint","isMut":true,"isSigner":false},{"name":"destinationTokenAccount","isMut":true,"isSigner":false},{"name":"tokenProgram","isMut":false,"isSigner":false}],"args":[{"name":"args","type":{"defined":"LeaveMatchArgs"}}]},{"name":"disburseTokensByOracle","accounts":[{"name":"matchInstance","isMut":true,"isSigner":false},{"name":"tokenAccountEscrow","isMut":true,"isSigner":false},{"name":"tokenMint","isMut":true,"isSigner":false},{"name":"destinationTokenAccount","isMut":true,"isSigner":false},{"name":"winOracle","isMut":false,"isSigner":false},{"name":"originalSender","isMut":true,"isSigner":false},{"name":"systemProgram","isMut":false,"isSigner":false},{"name":"tokenProgram","isMut":false,"isSigner":false},{"name":"rent","isMut":false,"isSigner":false}],"args":[{"name":"args","type":{"defined":"DisburseTokensByOracleArgs"}}]},{"name":"joinMatch","accounts":[{"name":"matchInstance","isMut":true,"isSigner":false},{"name":"tokenTransferAuthority","isMut":false,"isSigner":true},{"name":"tokenAccountEscrow","isMut":true,"isSigner":false},{"name":"tokenMint","isMut":true,"isSigner":false},{"name":"sourceTokenAccount","isMut":true,"isSigner":false},{"name":"sourceItemOrPlayerPda","isMut":false,"isSigner":false},{"name":"payer","isMut":true,"isSigner":true},{"name":"systemProgram","isMut":false,"isSigner":false},{"name":"validationProgram","isMut":false,"isSigner":false},{"name":"tokenProgram","isMut":false,"isSigner":false},{"name":"rent","isMut":false,"isSigner":false}],"args":[{"name":"args","type":{"defined":"JoinMatchArgs"}}]}],"accounts":[{"name":"Match","type":{"kind":"struct","fields":[{"name":"namespaces","type":{"option":{"vec":{"defined":"NamespaceAndIndex"}}}},{"name":"winOracle","type":"publicKey"},{"name":"winOracleCooldown","type":"u64"},{"name":"lastOracleCheck","type":"u64"},{"name":"authority","type":"publicKey"},{"name":"state","type":{"defined":"MatchState"}},{"name":"leaveAllowed","type":"bool"},{"name":"minimumAllowedEntryTime","type":{"option":"u64"}},{"name":"bump","type":"u8"},{"name":"currentTokenTransferIndex","type":"u64"},{"name":"tokenTypesAdded","type":"u64"},{"name":"tokenTypesRemoved","type":"u64"},{"name":"tokenEntryValidation","type":{"option":{"vec":{"defined":"TokenValidation"}}}},{"name":"tokenEntryValidationRoot","type":{"option":{"defined":"Root"}}},{"name":"joinAllowedDuringStart","type":"bool"}]}},{"name":"PlayerWinCallbackBitmap","type":{"kind":"struct","fields":[{"name":"matchKey","type":"publicKey"}]}},{"name":"WinOracle","type":{"kind":"struct","fields":[{"name":"finalized","type":"bool"},{"name":"tokenTransferRoot","type":{"option":{"defined":"Root"}}},{"name":"tokenTransfers","type":{"option":{"vec":{"defined":"TokenDelta"}}}}]}}],"types":[{"name":"CreateOrUpdateOracleArgs","type":{"kind":"struct","fields":[{"name":"tokenTransferRoot","type":{"option":{"defined":"Root"}}},{"name":"tokenTransfers","type":{"option":{"vec":{"defined":"TokenDelta"}}}},{"name":"seed","type":"publicKey"},{"name":"space","type":"u64"},{"name":"finalized","type":"bool"}]}},{"name":"DrainOracleArgs","type":{"kind":"struct","fields":[{"name":"seed","type":"publicKey"}]}},{"name":"CreateMatchArgs","type":{"kind":"struct","fields":[{"name":"matchState","type":{"defined":"MatchState"}},{"name":"tokenEntryValidationRoot","type":{"option":{"defined":"Root"}}},{"name":"tokenEntryValidation","type":{"option":{"vec":{"defined":"TokenValidation"}}}},{"name":"winOracle","type":"publicKey"},{"name":"winOracleCooldown","type":"u64"},{"name":"authority","type":"publicKey"},{"name":"space","type":"u64"},{"name":"leaveAllowed","type":"bool"},{"name":"joinAllowedDuringStart","type":"bool"},{"name":"minimumAllowedEntryTime","type":{"option":"u64"}}]}},{"name":"UpdateMatchArgs","type":{"kind":"struct","fields":[{"name":"matchState","type":{"defined":"MatchState"}},{"name":"tokenEntryValidationRoot","type":{"option":{"defined":"Root"}}},{"name":"tokenEntryValidation","type":{"option":{"vec":{"defined":"TokenValidation"}}}},{"name":"winOracleCooldown","type":"u64"},{"name":"authority","type":"publicKey"},{"name":"leaveAllowed","type":"bool"},{"name":"joinAllowedDuringStart","type":"bool"},{"name":"minimumAllowedEntryTime","type":{"option":"u64"}}]}},{"name":"JoinMatchArgs","type":{"kind":"struct","fields":[{"name":"amount","type":"u64"},{"name":"tokenEntryValidationProof","type":{"option":{"vec":{"array":["u8",32]}}}},{"name":"tokenEntryValidation","type":{"option":{"defined":"TokenValidation"}}}]}},{"name":"LeaveMatchArgs","type":{"kind":"struct","fields":[{"name":"amount","type":"u64"}]}},{"name":"DisburseTokensByOracleArgs","type":{"kind":"struct","fields":[{"name":"tokenDeltaProofInfo","type":{"option":{"defined":"TokenDeltaProofInfo"}}}]}},{"name":"TokenDeltaProofInfo","type":{"kind":"struct","fields":[{"name":"tokenDeltaProof","type":{"vec":{"array":["u8",32]}}},{"name":"tokenDelta","type":{"defined":"TokenDelta"}},{"name":"totalProof","type":{"vec":{"array":["u8",32]}}},{"name":"total","type":"u64"}]}},{"name":"Root","type":{"kind":"struct","fields":[{"name":"root","type":{"array":["u8",32]}}]}},{"name":"Callback","type":{"kind":"struct","fields":[{"name":"key","type":"publicKey"},{"name":"code","type":"u64"}]}},{"name":"ValidationArgs","type":{"kind":"struct","fields":[{"name":"instruction","type":{"array":["u8",8]}},{"name":"extraIdentifier","type":"u64"},{"name":"tokenValidation","type":{"defined":"TokenValidation"}}]}},{"name":"NamespaceAndIndex","type":{"kind":"struct","fields":[{"name":"namespace","type":"publicKey"},{"name":"indexed","type":"bool"},{"name":"inherited","type":{"defined":"InheritanceState"}}]}},{"name":"TokenDelta","type":{"kind":"struct","fields":[{"name":"from","type":"publicKey"},{"name":"to","type":{"option":"publicKey"}},{"name":"tokenTransferType","type":{"defined":"TokenTransferType"}},{"name":"mint","type":"publicKey"},{"name":"amount","type":"u64"}]}},{"name":"TokenValidation","type":{"kind":"struct","fields":[{"name":"filter","type":{"defined":"Filter"}},{"name":"isBlacklist","type":"bool"},{"name":"validation","type":{"option":{"defined":"Callback"}}}]}},{"name":"MatchState","type":{"kind":"enum","variants":[{"name":"Draft"},{"name":"Initialized"},{"name":"Started"},{"name":"Finalized"},{"name":"PaidOut"},{"name":"Deactivated"}]}},{"name":"PermissivenessType","type":{"kind":"enum","variants":[{"name":"TokenHolder"},{"name":"ParentTokenHolder"},{"name":"UpdateAuthority"},{"name":"Anybody"}]}},{"name":"InheritanceState","type":{"kind":"enum","variants":[{"name":"NotInherited"},{"name":"Inherited"},{"name":"Overridden"}]}},{"name":"TokenType","type":{"kind":"enum","variants":[{"name":"Player"},{"name":"Item"},{"name":"Any"}]}},{"name":"TokenTransferType","type":{"kind":"enum","variants":[{"name":"PlayerToPlayer"},{"name":"PlayerToEntrant"},{"name":"Normal"}]}},{"name":"Filter","type":{"kind":"enum","variants":[{"name":"None"},{"name":"All"},{"name":"Namespace","fields":[{"name":"namespace","type":"publicKey"}]},{"name":"Parent","fields":[{"name":"key","type":"publicKey"}]},{"name":"Mint","fields":[{"name":"mint","type":"publicKey"}]}]}},{"name":"ErrorCode","type":{"kind":"enum","variants":[{"name":"IncorrectOwner"},{"name":"Uninitialized"},{"name":"MintMismatch"},{"name":"TokenTransferFailed"},{"name":"NumericalOverflowError"},{"name":"TokenMintToFailed"},{"name":"TokenBurnFailed"},{"name":"DerivedKeyInvalid"},{"name":"InvalidStartingMatchState"},{"name":"InvalidUpdateMatchState"},{"name":"InvalidOracleUpdate"},{"name":"CannotDrainYet"},{"name":"CannotLeaveMatch"},{"name":"ReceiverMustBeSigner"},{"name":"PublicKeyMismatch"},{"name":"AtaShouldNotHaveDelegate"},{"name":"CannotEnterMatch"},{"name":"InvalidProof"},{"name":"RootNotPresent"},{"name":"MustPassUpObject"},{"name":"NoValidValidationFound"},{"name":"Blacklisted"},{"name":"NoTokensAllowed"},{"name":"InvalidValidation"},{"name":"NoDeltasFound"},{"name":"UsePlayerEndpoint"},{"name":"FromDoesNotMatch"},{"name":"CannotDeltaMoreThanAmountPresent"},{"name":"DeltaMintDoesNotMatch"},{"name":"DestinationMismatch"},{"name":"MatchMustBeInFinalized"},{"name":"AtaDelegateMismatch"},{"name":"OracleAlreadyFinalized"},{"name":"OracleCooldownNotPassed"},{"name":"MatchMustBeDrained"},{"name":"NoParentPresent"},{"name":"ReinitializationDetected"}]}}]}// await anchor.Program.fetchIdl(MATCHES_ID, provider);
+
+  const program = new anchor.Program(idl as anchor.Idl, MATCHES_ID, provider);
+
+ 
+                const anchorProgram =  new MatchesProgram({
+                    id: MATCHES_ID,
+                    // @ts-ignore
+                    program,
+                  });
+                  console.log(anchorProgram)
+                let blarg = new PublicKey("BCUfkAyJYpxBpjT7AhnHSbW2PnUMMhoKfDSdmd5fga1m")
+                const config = (await (await fetch('https://www.autist.design/blargs')).json()) 
+            
+                console.log(index)
+                // @ts-ignore
+                  const setup = config.tokensToJoin[index];
+                  console.log(setup)
+                  await anchorProgram.joinMatch(
+                    {
+                        // @ts-ignore
+                      amount: new anchor.BN(setup.amount),
+                      // @ts-ignore
+                      escrowBump: null,
+                      tokenEntryValidation: null,
+                      tokenEntryValidationProof: null,
+                    },
+                    {
+                        // @ts-ignore
+                      tokenMint: new PublicKey(setup.mint),
+                      sourceTokenAccount: null,
+                      tokenTransferAuthority: null,
+                      // @ts-ignore
+                      validationProgram: setup.validationProgram
+                      // @ts-ignore
+                        ? new PublicKey(setup.validationProgram)
+                        : null,
+                    },
+                    {
+                      winOracle: config.winOracle
+                        ? new PublicKey(config.winOracle)
+                        : (
+                            await getOracle(
+                              new PublicKey(config.oracleState.seed),
+            
+                              config.oracleState.authority
+                                ? new PublicKey(config.oracleState.authority)
+                                : wallet.publicKey
+                            )
+                          )[0],
+                          // @ts-ignore
+                      sourceType: setup.sourceType as TokenType,
+                      index:new anchor.BN(index),
                     }
-                    if (status && !status.err) {
-                        setSetupTxn(setupMint);
-                        setAlertState({
-                            open: true,
-                            message:
-                                'Setup transaction succeeded! You can now validate mint transaction',
-                            severity: 'info',
-                        });
-                    } else {
-                        setAlertState({
-                            open: true,
-                            message: 'Mint failed! Please try again!',
-                            severity: 'error',
-                        });
-                        return;
-                    }
-                }
-
-                const setupState = setupMint ?? setupTxn;
-                const mint = setupState?.mint ?? anchor.web3.Keypair.generate();
-                let mintResult = await mintOneToken(
-                    candyMachine,
-                    wallet.publicKey,
-                    mint,
-                    beforeTransactions,
-                    afterTransactions,
-                    setupState,
-                );
-
-                let status: any = {err: true};
-                let metadataStatus = null;
-                if (mintResult) {
-                    status = await awaitTransactionSignatureConfirmation(
-                        mintResult.mintTxId,
-                        props.txTimeout,
-                        props.connection,
-                        true,
-                    );
-
-                    metadataStatus =
-                        await candyMachine.program.provider.connection.getAccountInfo(
-                            mintResult.metadataKey,
-                            'processed',
-                        );
-                    console.log('Metadata status: ', !!metadataStatus);
-                }
-
-                if (status && !status.err && metadataStatus) {
-                    setAlertState({
-                        open: true,
-                        message: 'Congratulations! Mint succeeded!',
-                        severity: 'success',
-                    });
-
-                    // update front-end amounts
-                    displaySuccess(mint.publicKey);
-                    refreshCandyMachineState('processed');
-                } else if (status && !status.err) {
-                    setAlertState({
-                        open: true,
-                        message:
-                            'Mint likely failed! Anti-bot SOL 0.01 fee potentially charged! Check the explorer to confirm the mint failed and if so, make sure you are eligible to mint before trying again.',
-                        severity: 'error',
-                        hideDuration: 8000,
-                    });
-                    refreshCandyMachineState();
-                } else {
-                    setAlertState({
-                        open: true,
-                        message: 'Mint failed! Please try again!',
-                        severity: 'error',
-                    });
-                    refreshCandyMachineState();
-                }
-            }
-        } catch (error: any) {
-            let message = error.msg || 'Minting failed! Please try again!';
-            if (!error.msg) {
-                if (!error.message) {
-                    message = 'Transaction Timeout! Please try again.';
-                } else if (error.message.indexOf('0x138')) {
-                } else if (error.message.indexOf('0x137')) {
-                    message = `SOLD OUT!`;
-                } else if (error.message.indexOf('0x135')) {
-                    message = `Insufficient funds to mint. Please fund your wallet.`;
-                }
-            } else {
-                if (error.code === 311) {
-                    message = `SOLD OUT!`;
-                } else if (error.code === 312) {
-                    message = `Minting period hasn't started yet.`;
-                }
-            }
-
-            setAlertState({
-                open: true,
-                message,
-                severity: "error",
-            });
-        } finally {
-            setIsMinting(false);
-        }
+                  );
+                
+            }      
     };
-
+ const someDecs2 = {"AD1bo7F21Cy8sfUkYXEBLJTTXA7Z8NREwMX1pZBgLakq":9,"Fq1ZUCxZYWcEJdtN48zmhMkpVYCYCBSrnNU351PFZwCG":9,"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v":6,
+"8HGyAAB1yoM1ttS7pXjHMa3dukTFGQggnFFH3hJZgzQh":6,
+"8upjSpvjcdpuzhfR1zriwg5NXkwDruejqNE9WNbPRtyA":6,
+"PRSMNsEPqhGVCH1TtWiJqPjJyh2cKrLostPZTNy1o5x":6, "openDKyuDPS6Ak1BuD3JtvkQGV3tzCxjpHUfe1mdC79":9
+  }
     useEffect(() => {
         (async () => {
             if (anchorWallet) {
+              const config = (await (await fetch('https://www.autist.design/blargs')).json()) 
+              let temp = "To play, select a number above and it'll cost u this much for u (and ur team) to become winna: \n"
+            for (var token of config.tokensToJoin){
+              // @ts-ignore
+              temp+=token.mint + ': ' + token.amount / 10 ** parseInt(someDecs2[token.mint]) + '\n'
+            }
+            temp+="I'm actually lazy ppl plz look up which token r which for now. :)"
+            setToplay(temp)
                 const balance = await props.connection.getBalance(anchorWallet!.publicKey);
                 setBalance(balance / LAMPORTS_PER_SOL);
             }
         })();
     }, [anchorWallet, props.connection]);
 
-    useEffect(() => {
-        refreshCandyMachineState();
-    }, [
-        anchorWallet,
-        props.candyMachineId,
-        props.connection,
-        isEnded,
-        isPresale,
-        refreshCandyMachineState
-    ]);
+function changeIndex(e: any){
+    try {
+    setIndex(parseInt(e.target.value))
+    }
+    catch (err){
 
+    }
+}
 
     return (
         <main>
@@ -657,81 +419,23 @@ const Home = (props: HomeProps) => {
                                 src="cool-cats.gif"
                                 alt="NFT To Mint"/></div>
                             <br/>
-                            {wallet && isActive && whitelistEnabled && (whitelistTokenBalance > 0) && isBurnToken &&
-                              <h3>You own {whitelistTokenBalance} WL
-                                mint {whitelistTokenBalance > 1 ? "tokens" : "token"}.</h3>}
-                            {wallet && isActive && whitelistEnabled && (whitelistTokenBalance > 0) && !isBurnToken &&
-                              <h3>You are whitelisted and allowed to mint.</h3>}
-                            {wallet && isActive && endDate && Date.now() < endDate.getTime() &&
-                              <Countdown
-                                date={toDate(candyMachine?.state?.endSettings?.number)}
-                                onMount={({completed}) => completed && setIsEnded(true)}
-                                onComplete={() => {
-                                    setIsEnded(true);
-                                }}
-                                renderer={renderEndDateCounter}
-                              />}
-                            {wallet && isActive &&
-                              <h3>TOTAL MINTED : {itemsRedeemed} / {itemsAvailable}</h3>}
-                            {wallet && isActive && <BorderLinearProgress variant="determinate"
-                                                                         value={100 - (itemsRemaining * 100 / itemsAvailable)}/>}
-                            <br/>
+                            
                             <MintButtonContainer>
-                                {!isActive && !isEnded && candyMachine?.state.goLiveDate && (!isWLOnly || whitelistTokenBalance > 0) ? (
-                                    <Countdown
-                                        date={toDate(candyMachine?.state.goLiveDate)}
-                                        onMount={({completed}) => completed && setIsActive(!isEnded)}
-                                        onComplete={() => {
-                                            setIsActive(!isEnded);
-                                        }}
-                                        renderer={renderGoLiveDateCounter}
-                                    />) : (
-                                    !wallet ? (
-                                        <ConnectButton>Connect Wallet</ConnectButton>
-                                    ) : (!isWLOnly || whitelistTokenBalance > 0) ?
-                                        candyMachine?.state.gatekeeper &&
-                                        wallet.publicKey &&
-                                        wallet.signTransaction ? (
-                                            <GatewayProvider
-                                                wallet={{
-                                                    publicKey:
-                                                        wallet.publicKey ||
-                                                        new PublicKey(CANDY_MACHINE_PROGRAM),
-                                                    //@ts-ignore
-                                                    signTransaction: wallet.signTransaction,
-                                                }}
-                                                // // Replace with following when added
-                                                // gatekeeperNetwork={candyMachine.state.gatekeeper_network}
-                                                gatekeeperNetwork={
-                                                    candyMachine?.state?.gatekeeper?.gatekeeperNetwork
-                                                } // This is the ignite (captcha) network
-                                                /// Don't need this for mainnet
-                                                clusterUrl={rpcUrl}
-                                                cluster={cluster}
-                                                options={{autoShowModal: false}}
-                                            >
-                                                <MintButton
-                                                    candyMachine={candyMachine}
-                                                    isMinting={isMinting}
-                                                    isActive={isActive}
-                                                    isEnded={isEnded}
-                                                    isSoldOut={isSoldOut}
-                                                    onMint={onMint}
-                                                />
-                                            </GatewayProvider>
-                                        ) : (
-                                            <MintButton
-                                                candyMachine={candyMachine}
-                                                isMinting={isMinting}
-                                                isActive={isActive}
-                                                isEnded={isEnded}
-                                                isSoldOut={isSoldOut}
+                               { !wallet && 
+                                        <ConnectButton>Connect Wallet</ConnectButton> }
+                               { wallet && 
+                               <div>
+                                 <h3>Hey type in 0 for our collective - w o w - or 1 for our social token <br />- mmm - then after that idk this is guesswork <br /> lol <br />2 for usdc, 3 for cope, 4 for grape, 5 for prism</h3>
+                                 
+                                 <Input type="text" onChange={changeIndex} placeholder={"1"} />
+
+                                 <h3>I am lazy and atm you need 1 of whatever token. the first cool bit is that <br /> anyone who becomes winner for they team 1. increases cost to play for they team 2. decrease cost to play for all oppsin teams <br /> ohhh, nash.. nash</h3>
+                                 <h1>6 for OPEN</h1> <h3>ayy, well, {toplay} </h3>   <h3>anyways all the other rules from all the other fair3ds remain the same: <br /> you can become winner at any time, with any of the below buttons. <br  /> if you do, the timer resets to now + 24hrs <br /> altho, now we're raindrops. <br /> so instead of 1 party winning lions share - well, we fck with the nashisms kiddos. <br /> redacted_j wen onchain referrals? <br /> dont forget to stake ur tokens tho cuz the hydras arguably the only ppl extractin value here <br /> ily </h3>       <MintButton
+
                                                 onMint={onMint}
                                             />
-
-                                        ) :
-                                        <h1>Mint is private.</h1>
-                                )}
+</div>
+                                        }
                             </MintButtonContainer>
                             <br/>
                             {wallet && isActive && solanaExplorerLink &&

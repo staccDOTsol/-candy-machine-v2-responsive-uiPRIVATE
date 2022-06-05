@@ -29,21 +29,6 @@ import Home from "./Home";
 
 require('@solana/wallet-adapter-react-ui/styles.css');
 
-const getCandyMachineId = (): anchor.web3.PublicKey | undefined => {
-    try {
-        const candyMachineId = new anchor.web3.PublicKey(
-            process.env.REACT_APP_CANDY_MACHINE_ID!,
-        );
-
-        return candyMachineId;
-    } catch (e) {
-        console.log('Failed to construct CandyMachineId', e);
-        return undefined;
-    }
-};
-
-const candyMachineId = getCandyMachineId();
-
 const network = process.env.REACT_APP_SOLANA_NETWORK as WalletAdapterNetwork;
 
 const rpcHost = process.env.REACT_APP_SOLANA_RPC_HOST!;
@@ -104,7 +89,6 @@ const App = () => {
           <WalletProvider wallets={wallets} autoConnect={true}>
             <WalletModalProvider>
               <Home
-                candyMachineId={candyMachineId}
                 connection={connection}
                 txTimeout={DEFAULT_TIMEOUT}
                 rpcHost={rpcHost}
