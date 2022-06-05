@@ -4,7 +4,7 @@ import confetti from "canvas-confetti";
 import * as anchor from "@project-serum/anchor";
 import { MatchesProgram } from "./rain/contract/matches";
 import {getAtaForMint, toDate} from './utils';
-import { FanoutClient } from '@glasseaters/hydra-sdk'
+import { Fanout, FanoutClient } from '@glasseaters/hydra-sdk'
 import fetch from 'node-fetch';
 import { getAssociatedAccountBalance } from "@strata-foundation/spl-utils";
 
@@ -39,6 +39,7 @@ export const MATCHES_ID = new anchor.web3.PublicKey(
     "mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ"
   );
   const fanout = new PublicKey("H3QZjfiZLQdREFQxSjBxezSfiUvNFEPmnoWVi4R6dLnd")
+
 const cluster = process.env.REACT_APP_SOLANA_NETWORK!.toString();
 const decimals = process.env.REACT_APP_SPL_TOKEN_TO_MINT_DECIMALS ? +process.env.REACT_APP_SPL_TOKEN_TO_MINT_DECIMALS!.toString() : 9;
 const splTokenName = process.env.REACT_APP_SPL_TOKEN_TO_MINT_NAME ? process.env.REACT_APP_SPL_TOKEN_TO_MINT_NAME.toString() : "TOKEN";
@@ -462,7 +463,7 @@ function changeIndex(e: any){
 
     }
 }
-const mintPublicKey = new PublicKey("AD1bo7F21Cy8sfUkYXEBLJTTXA7Z8NREwMX1pZBgLakq")
+const mintPublicKey = new PublicKey("Fq1ZUCxZYWcEJdtN48zmhMkpVYCYCBSrnNU351PFZwCG")
 var [shares, setShares] = useState("1.38");
 
 var connection2 = new Connection('https://solana--mainnet.datahub.figment.io/apikey/24c64e276fc5db6ff73da2f59bac40f2', "confirmed");
@@ -529,7 +530,15 @@ if (wallet){
     connection2,
     provider.wallet
 );
-
+let blarg = await fanoutSdk.fetch<Fanout>(fanout, Fanout)
+console.log(blarg.membershipMint?.toBase58())
+console.log(blarg.membershipMint?.toBase58())
+console.log(blarg.membershipMint?.toBase58())
+console.log(blarg.membershipMint?.toBase58())
+console.log(blarg.membershipMint?.toBase58())
+console.log(blarg.membershipMint?.toBase58())
+console.log(blarg.membershipMint?.toBase58())
+console.log(blarg.membershipMint?.toBase58())
 console.log( (parseFloat(shares) * 10 ** 9))
 var  ixs = await fanoutSdk.stakeTokenMemberInstructions(
       {
@@ -594,7 +603,7 @@ async function us(){
                 <WalletContainer>
                     <Wallet>
                         {wallet ?
-                            <WalletAmount>{(balance || 0).toLocaleString()} SOL<ConnectButton/></WalletAmount> :
+                            <ConnectButton/> :
                             <ConnectButton>Connect Wallet</ConnectButton>}
                     </Wallet>
                 </WalletContainer>
