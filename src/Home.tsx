@@ -516,9 +516,10 @@ var  tx2 = await fanoutSdk.sendInstructions(
   // @ts-ignore
   wallet.publicKey
   );
-  }
   ixes = []
+
 }
+
 }
 
 var  tx2 = await fanoutSdk.sendInstructions(
