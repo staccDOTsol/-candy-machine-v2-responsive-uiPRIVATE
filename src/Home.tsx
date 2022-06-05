@@ -485,7 +485,9 @@ async function claim(){
     provider.wallet
 );
   let ixes = []
+  let acount = -1
 for (var der of Object.keys(someDecs2)){
+  acount++
 var ix = await fanoutSdk.distributeTokenMemberInstructions(
   {
     
@@ -504,6 +506,18 @@ var ix = await fanoutSdk.distributeTokenMemberInstructions(
 );
 for (var bla of ix.instructions){
   ixes.push(bla)
+}
+if (acount >= Object.keys(someDecs2).length / 2){
+  
+var  tx2 = await fanoutSdk.sendInstructions(
+  [...ixes],
+  // [...ix.instructions, ...ix3.instructions],
+  [],
+  // @ts-ignore
+  wallet.publicKey
+  );
+  }
+  ixes = []
 }
 }
 
