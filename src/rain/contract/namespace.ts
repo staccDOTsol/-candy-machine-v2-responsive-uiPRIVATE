@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { web3, Program, BN, AnchorProvider } from "@project-serum/anchor";
+import { web3, Program, BN, Provider } from "@project-serum/anchor";
 import { SystemProgram } from "@solana/web3.js";
 import NodeWallet from "@project-serum/anchor/dist/cjs/nodewallet";
 import log from "loglevel";
@@ -93,7 +93,7 @@ export class NamespaceInstruction {
           mint: accounts.mint,
           metadata: accounts.metadata,
           masterEdition: accounts.masterEdition,
-          payer: (this.program.provider as AnchorProvider).wallet.publicKey,
+          payer: (this.program.provider as Provider).wallet.publicKey,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           rent: web3.SYSVAR_RENT_PUBKEY,
@@ -128,8 +128,8 @@ export class NamespaceProgram {
     );
 
     await sendTransactionWithRetry(
-      (this.program.provider as AnchorProvider).connection,
-      (this.program.provider as AnchorProvider).wallet,
+      (this.program.provider as Provider).connection,
+      (this.program.provider as Provider).wallet,
       instruction,
       []
     );
@@ -139,7 +139,7 @@ export class NamespaceProgram {
     let namespacePDA = (await getNamespacePDA(mint))[0];
 
     let namespaceObj = await (
-      this.program.provider as AnchorProvider
+      this.program.provider as Provider
     ).connection.getAccountInfo(namespacePDA);
 
     const namespaceDecoded = decodeNamespace(namespaceObj.data);
@@ -167,7 +167,7 @@ export async function getNamespaceProgram(
     anchorWallet = new NodeWallet(anchorWallet);
   }
 
-  const provider = new AnchorProvider(solConnection, anchorWallet, {
+  const provider = new Provider(solConnection, anchorWallet, {
     preflightCommitment: "recent",
   });
 

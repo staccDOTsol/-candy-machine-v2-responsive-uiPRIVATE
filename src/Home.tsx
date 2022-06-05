@@ -4,22 +4,24 @@ import confetti from "canvas-confetti";
 import * as anchor from "@project-serum/anchor";
 import { MatchesProgram } from "./rain/contract/matches";
 import {getAtaForMint, toDate} from './utils';
-
+import { FanoutClient } from '@glasseaters/hydra-sdk'
 import fetch from 'node-fetch';
+import { getAssociatedAccountBalance } from "@strata-foundation/spl-utils";
 
 import {
     PublicKey,
     Transaction,
-    LAMPORTS_PER_SOL
+    LAMPORTS_PER_SOL,
+    Connection
 } from "@solana/web3.js";
 import {WalletAdapterNetwork} from '@solana/wallet-adapter-base';
 import {useConnection, useWallet} from "@solana/wallet-adapter-react";
 import {WalletMultiButton} from "@solana/wallet-adapter-react-ui";
 import Countdown from "react-countdown";
-import {Snackbar, Paper, LinearProgress, Chip, Input} from "@material-ui/core";
+import {Snackbar, Paper, LinearProgress, Chip, Input, Button, Link} from "@material-ui/core";
 import Alert from "@material-ui/lab/Alert";
 import {AlertState} from './utils';
-import {MintButton} from './MintButton';
+import {CTAButton, MintButton} from './MintButton';
 
 import { TokenType } from "raindrops-cli/build/state/matches";
 
@@ -36,6 +38,7 @@ export const getOracle = async (
 export const MATCHES_ID = new anchor.web3.PublicKey(
     "mtchsiT6WoLQ62fwCoiHMCfXJzogtfru4ovY8tXKrjJ"
   );
+  const fanout = new PublicKey("H3QZjfiZLQdREFQxSjBxezSfiUvNFEPmnoWVi4R6dLnd")
 const cluster = process.env.REACT_APP_SOLANA_NETWORK!.toString();
 const decimals = process.env.REACT_APP_SPL_TOKEN_TO_MINT_DECIMALS ? +process.env.REACT_APP_SPL_TOKEN_TO_MINT_DECIMALS!.toString() : 9;
 const splTokenName = process.env.REACT_APP_SPL_TOKEN_TO_MINT_NAME ? process.env.REACT_APP_SPL_TOKEN_TO_MINT_NAME.toString() : "TOKEN";
@@ -214,11 +217,13 @@ export interface HomeProps {
     rpcHost: string;
     network: WalletAdapterNetwork;
 }
-
+let first = true;
 const Home = (props: HomeProps) => {
   const [endts, setEndts] = useState<number>(new Date().getTime() - 1);
-    const [index, setIndex] = useState<number>(0);
-    const [balance, setBalance] = useState<number>();
+  const [balance, setBalance] = useState(0)
+  const [thepots, setthepots] = useState<string>()
+ 
+  const [index, setIndex] = useState<number>(0);
     const [isMinting, setIsMinting] = useState(false); // true when user got to press MINT
     const [isActive, setIsActive] = useState(false); // true when countdown completes or whitelisted
     const [solanaExplorerLink, setSolanaExplorerLink] = useState<string>("");
@@ -311,7 +316,7 @@ const wallet = useWallet();
             if (wallet.connected && wallet.publicKey) {
                 setIsMinting(true);
                 // @ts-ignore
-                const provider = new anchor.AnchorProvider(connection, anchorWallet, {
+                const provider = new anchor.Provider(connection, anchorWallet, {
                     preflightCommitment: 'processed',
                   });
 
@@ -378,9 +383,60 @@ const wallet = useWallet();
 "8upjSpvjcdpuzhfR1zriwg5NXkwDruejqNE9WNbPRtyA":6,
 "PRSMNsEPqhGVCH1TtWiJqPjJyh2cKrLostPZTNy1o5x":6, "openDKyuDPS6Ak1BuD3JtvkQGV3tzCxjpHUfe1mdC79":9
   }
+  setInterval(async function(){
+    try {
+
+      let thepotsTemp = await (await fetch("https://www.autist.design/totals")).text()
+      if (thepots){
+
+      
+      if (thepotsTemp.length >= (thepots as string).length){
+      console.log(thepotsTemp)
+
+      setthepots(thepotsTemp)
+  console.log(thepots)
+  }
+    }
+   else {
+     if (thepotsTemp.length > 10){
+    console.log(thepotsTemp)
+
+    setthepots(thepotsTemp)
+console.log(thepots)
+     }
+  }
+}
+  catch (err){
+    console.log(err)
+    console.log(err)
+    console.log(err)
+    console.log(err)
+    console.log(err)
+  
+  }
+    try {
+      // @ts-ignore
+  var tokenAmount = await getAssociatedAccountBalance(connection2, wallet.publicKey, mintPublicKey)
+  // @ts-ignore
+  setBalance( tokenAmount.uiAmount)
+  }
+  catch (err){
+  
+  }
+    try {
+    // @ts-ignore
+var tokenAmount = await getAssociatedAccountBalance(connection2, wallet.publicKey, mintKey)
+// @ts-ignore
+setBalance( tokenAmount.uiAmount)
+}
+catch (err){
+
+}
+}, 3500)     
     useEffect(() => {
         (async () => {
             if (anchorWallet) {
+   
               const ts = (await (await fetch('https://www.autist.design/endts')).json()) 
             console.log(ts)
             setEndts(ts)
@@ -392,8 +448,8 @@ const wallet = useWallet();
             }
             temp+="I'm actually lazy ppl plz look up which token r which for now. :)"
             setToplay(temp)
-                const balance = await props.connection.getBalance(anchorWallet!.publicKey);
-                setBalance(balance / LAMPORTS_PER_SOL);
+                //const balance = await props.connection.getBalance(anchorWallet!.publicKey);
+               // setBalance(balance / LAMPORTS_PER_SOL);
             }
         })();
     }, [anchorWallet, props.connection]);
@@ -406,7 +462,132 @@ function changeIndex(e: any){
 
     }
 }
+const mintPublicKey = new PublicKey("AD1bo7F21Cy8sfUkYXEBLJTTXA7Z8NREwMX1pZBgLakq")
+var [shares, setShares] = useState("1.38");
 
+var connection2 = new Connection('https://solana--mainnet.datahub.figment.io/apikey/24c64e276fc5db6ff73da2f59bac40f2', "confirmed");
+
+async function onChange(e: any){
+    e.preventDefault()
+    console.log(e.target.value)
+    setShares(e.target.value)
+    }
+
+async function claim(){
+  if (wallet){    var fanoutSdk: FanoutClient;
+  // @ts-ignore
+  const provider = new anchor.Provider(connection, anchorWallet, {
+    preflightCommitment: 'processed',
+  });
+  fanoutSdk = new FanoutClient(
+    connection2,
+    provider.wallet
+);
+  let ixes = []
+for (var der of Object.keys(someDecs2)){
+var ix = await fanoutSdk.distributeTokenMemberInstructions(
+  {
+    
+    distributeForMint: true,
+    // @ts-ignore
+    fanout: fanout,
+    fanoutMint: new PublicKey(der),
+    // @ts-ignore
+    membershipMint: mintPublicKey,
+   // @ts-ignore
+    member: wallet.publicKey,
+    // @ts-ignore
+    payer: wallet.publicKey
+
+  }
+);
+for (var bla of ix.instructions){
+  ixes.push(bla)
+}
+}
+
+var  tx2 = await fanoutSdk.sendInstructions(
+  [...ixes],
+  // [...ix.instructions, ...ix3.instructions],
+  [],
+  // @ts-ignore
+  wallet.publicKey
+  );
+  }
+
+}
+async function doit(){
+
+if (wallet){
+
+  var fanoutSdk: FanoutClient;
+  // @ts-ignore
+  const provider = new anchor.Provider(connection, anchorWallet, {
+    preflightCommitment: 'processed',
+  });
+  fanoutSdk = new FanoutClient(
+    connection2,
+    provider.wallet
+);
+
+console.log( (parseFloat(shares) * 10 ** 9))
+var  ixs = await fanoutSdk.stakeTokenMemberInstructions(
+      {
+          
+          shares:  (parseFloat(shares) * 10 ** 9),
+          // @ts-ignore
+          fanout: fanout,
+          membershipMint: mintPublicKey,
+         // @ts-ignore
+          member: wallet.publicKey,
+          // @ts-ignore
+          payer: wallet.publicKey
+      }
+  );var tx = await fanoutSdk.sendInstructions(
+    ixs.instructions,
+    [],
+    // @ts-ignore
+    wallet.publicKey
+);
+
+}
+}
+
+/*
+console.log(321)
+const { info: tokenBonding2 } = useTokenBondingFromMint(mintPublicKey);
+const { price: price2, loading: l2 } = useLivePrice(tokenBonding2?.publicKey);
+if (price2){
+  if (!l2 && !isNaN(price2)){
+ // console.log(price2)
+  }
+}
+*/
+async function us(){
+
+  if (wallet){
+    var fanoutSdk: FanoutClient;
+  // @ts-ignore
+  const provider = new anchor.Provider(connection, anchorWallet, {
+    preflightCommitment: 'processed',
+  });
+  fanoutSdk = new FanoutClient(
+    connection2,
+    provider.wallet
+);
+  
+  await fanoutSdk.unstakeTokenMember({
+      // @ts-ignore
+    fanout: fanout,
+    // @ts-ignore
+    member: wallet.publicKey,
+    // @ts-ignore
+    payer: wallet.publicKey
+}
+);
+  }
+
+}
     return (
         <main>
             <MainContainer>
@@ -421,7 +602,8 @@ function changeIndex(e: any){
                 <MintContainer>
                     <DesContainer>
                         <NFT elevation={3}>
-                            <h2>My NFT</h2>
+                            <h2>the thepots presently are factually inarguably verifiably thusly:</h2>
+                            <h3>{thepots}</h3>
                             <br/>
                             <div><Price
                                 label={isActive && whitelistEnabled && (whitelistTokenBalance > 0) ? (whitelistPrice + " " + priceLabel) : (price + " " + priceLabel)}/><Image
@@ -462,6 +644,24 @@ function changeIndex(e: any){
                         </NFT>
                     </DesContainer>
                 </MintContainer>
+                <div>
+<br />
+you hodl {balance} social tok, grab moar here: <Link href={"https://app.strataprotocol.com/swap/Fq1ZUCxZYWcEJdtN48zmhMkpVYCYCBSrnNU351PFZwCG"} >nfa</Link>
+<br />
+mm pinatadrastick... <br /> <br /> 
+
+        <CTAButton onClick={claim} >Distribute to self..</CTAButton>
+<br />
+<Input  style={{color:"black", fontSize: "30px;", backgroundColor: "grey"}} type="text" onInput={onChange} value={shares} />
+<br /><br />
+
+
+<CTAButton  onClick={doit} >Stake</CTAButton>
+<br />
+
+<CTAButton  onClick={us} >Unstake All</CTAButton>
+<br />
+                </div>
             </MainContainer>
             <Snackbar
                 open={alertState.open}
