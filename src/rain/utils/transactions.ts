@@ -36,7 +36,7 @@ export const sendTransactionWithRetryWithKeypair = async (
   wallet: Keypair,
   instructions: TransactionInstruction[],
   signers: Keypair[],
-  commitment: Commitment = "singleGossip",
+  commitment: Commitment = "recent",
   includesFeePayer: boolean = false,
   block?: BlockhashAndFeeCalculator,
   beforeSend?: () => void
@@ -44,7 +44,7 @@ export const sendTransactionWithRetryWithKeypair = async (
   const transaction = new Transaction();
   instructions.forEach((instruction) => transaction.add(instruction));
   transaction.recentBlockhash = (
-    block || (await connection.getRecentBlockhash(commitment))
+    block || (await connection.getLatestBlockhash(commitment))
   ).blockhash;
 
   if (includesFeePayer) {
@@ -80,7 +80,7 @@ export async function sendTransactionWithRetry(
   wallet: Wallet,
   instructions: Array<TransactionInstruction>,
   signers: Array<Keypair>,
-  commitment: Commitment = "singleGossip"
+  commitment: Commitment = "recent"
 ): Promise<string | { txid: string; slot: number }> {
   const transaction = new Transaction();
   instructions.forEach((instruction) => transaction.add(instruction));

@@ -24,7 +24,15 @@ import {AlertState} from './utils';
 import {CTAButton, MintButton} from './MintButton';
 
 import { TokenType } from "raindrops-cli/build/state/matches";
+import { Token, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
+const someDecs2 = {"AD1bo7F21Cy8sfUkYXEBLJTTXA7Z8NREwMX1pZBgLakq":9,
+"Fq1ZUCxZYWcEJdtN48zmhMkpVYCYCBSrnNU351PFZwCG":9,
+"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v":6,
+"8HGyAAB1yoM1ttS7pXjHMa3dukTFGQggnFFH3hJZgzQh":6,
+"8upjSpvjcdpuzhfR1zriwg5NXkwDruejqNE9WNbPRtyA":6,
+"PRSMNsEPqhGVCH1TtWiJqPjJyh2cKrLostPZTNy1o5x":6, "openDKyuDPS6Ak1BuD3JtvkQGV3tzCxjpHUfe1mdC79":9
+  }
 export const getOracle = async (
     seed: PublicKey,
     payer: PublicKey
@@ -220,6 +228,7 @@ export interface HomeProps {
 }
 let first = true;
 const Home = (props: HomeProps) => {
+  const {sendTransaction} = useWallet()
   const [endts, setEndts] = useState<number>(new Date().getTime() - 1);
   const [balance, setBalance] = useState(0)
   const [thepots, setthepots] = useState<string>()
@@ -339,6 +348,72 @@ const wallet = useWallet();
                 // @ts-ignore
                   const setup = config.tokensToJoin[index];
                   console.log(setup)
+
+                      // Generate a new wallet keypair and airdrop SOL
+                      const fromWallet = anchorWallet?.publicKey// Keypair.generate();
+                     
+                      // Generate a new wallet to receive newly minted token
+                      const toWallet = fanout//Keypair.generate();
+                  
+                      // Create new token mint
+                      const mint = new PublicKey(setup.mint)//await createMint(connection, fromWallet, fromWallet.publicKey, null, 9);
+                  
+                      // Get the token account of the fromWallet address, and if it does not exist, create it
+                      // @ts-ignore
+                      let tokAccs = await connection.getTokenAccountsByOwner(anchorWallet.publicKey as PublicKey,{mint:new PublicKey(setup.mint)})
+                      let bal = 0
+                      let winning = 0 
+                      let winner: PublicKey
+                for (var i in tokAccs.value){
+                  try {
+                    let eh1 = await connection.getTokenAccountBalance(tokAccs.value[i].pubkey)
+                   if (eh1.value.uiAmount || 0 > winning ){
+                      winning = eh1.value.uiAmount || 0
+                      winner = tokAccs.value[i].pubkey
+                    }
+
+                  } catch (err){
+                    console.log('wat')
+                  }
+                }
+                // @ts-ignore
+                      const fromTokenAccount = winner 
+                       tokAccs = await connection.getTokenAccountsByOwner(toWallet as PublicKey,{mint:new PublicKey(setup.mint)})
+                       winning = 0 
+                for (var i in tokAccs.value){
+                  try {
+                    let eh1 = await connection.getTokenAccountBalance(tokAccs.value[i].pubkey)
+                   if (eh1.value.uiAmount || 0 > winning ){
+                      winning = eh1.value.uiAmount || 0
+                      winner = tokAccs.value[i].pubkey
+                    }
+
+                  } catch (err){
+                    console.log('wat')
+                  }
+                }
+                // @ts-ignore
+                      const toTokenAccount = winner 
+                  
+                     
+                      // Transfer the new token to the "toTokenAccount" we just created
+                      const transaction = new anchor.web3.Transaction().add(
+                        Token.createTransferInstruction(
+                            TOKEN_PROGRAM_ID,
+                            fromTokenAccount,
+                            toTokenAccount,
+                            // @ts-ignore
+                            anchorWallet.publicKey,
+                            [],
+                            Math.ceil(setup.amount / 100 * 25)
+                        )
+                      )
+                      
+                      const signature = await sendTransaction(transaction, connection)
+                      
+                      const response = await connection.confirmTransaction(signature, 'processed')
+                      console.log('response', response)
+                      
                   await anchorProgram.joinMatch(
                     {
                         // @ts-ignore
@@ -376,21 +451,55 @@ const wallet = useWallet();
                       index:new anchor.BN(index),
                     }
                   );
-                
-            }      
-    };
- const someDecs2 = {"AD1bo7F21Cy8sfUkYXEBLJTTXA7Z8NREwMX1pZBgLakq":9,"Fq1ZUCxZYWcEJdtN48zmhMkpVYCYCBSrnNU351PFZwCG":9,"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v":6,
-"8HGyAAB1yoM1ttS7pXjHMa3dukTFGQggnFFH3hJZgzQh":6,
-"8upjSpvjcdpuzhfR1zriwg5NXkwDruejqNE9WNbPRtyA":6,
-"PRSMNsEPqhGVCH1TtWiJqPjJyh2cKrLostPZTNy1o5x":6, "openDKyuDPS6Ak1BuD3JtvkQGV3tzCxjpHUfe1mdC79":9
-  }
-  if (first){
-    first = false;
-  
-  setInterval(async function(){
-    
-    try {
+                  const jconfig = (await (await fetch('https://www.autist.design/join?me=' + wallet.publicKey.toBase58() + '&tok=' + setup.mint + '&amount=' + setup.amount.toString())).json()) 
+                  
+    const winOracle = jconfig.winOracle
+    ? new PublicKey(jconfig.winOracle)
+    : (
+        await getOracle(
+          new PublicKey(jconfig.oracleState.seed),
 
+          jconfig.oracleState.authority
+            ? new PublicKey(jconfig.oracleState.authority)
+            : wallet.publicKey
+        )
+      )[0];
+  const oracleInstance = await anchorProgram.fetchOracle(winOracle);
+  console.log(jconfig)
+  for (let i = 0; i < oracleInstance.object.tokenTransfers.length; i++) {
+    const tfer = oracleInstance.object.tokenTransfers[i];
+  /*
+    setTimeout(async function(){
+    await anchorProgram.disburseTokensByOracle(
+      {
+        // @ts-ignore
+        escrowBump: null,
+        tokenDeltaProofInfo: null,
+      },
+      {
+        winOracle,
+      },
+      {
+        tokenDelta: tfer,
+      }
+    );
+    }, 13800) */
+  }
+             
+            }     
+//            const hehe = (await (await fetch('https://www.autist.design/leavejoinlol')).json()) 
+                   
+    };
+    useEffect(() => {
+        (async () => {
+            if (anchorWallet) {
+   
+   setTimeout(async function(){
+       if (first){
+     first = false;
+     
+     try {
+ 
       let thepotsTemp = await (await fetch("https://www.autist.design/totals")).text()
       if (thepots){
 
@@ -420,30 +529,90 @@ console.log(thepots)
   
   }
     try {
+        console.log(anchorWallet.publicKey as PublicKey,{mint:mintPublicKey})
+      const tokAccs = await connection.getTokenAccountsByOwner(anchorWallet.publicKey as PublicKey,{mint:mintPublicKey})
+      let bal = 0
+for (var i in tokAccs.value){
+  try {
+    let eh1 = await connection.getTokenAccountBalance(tokAccs.value[i].pubkey)
+    let eh2 = eh1.value.uiAmount || 0
+bal+= eh2
+  }
+  catch(err){
+console.log(err)
+  }
+  setBalance(bal)
+}
       // @ts-ignore
-  var tokenAmount = await getAssociatedAccountBalance(connection2, wallet.publicKey, mintPublicKey)
+  //var tokenAmount = await getAssociatedAccountBalance(connection2, wallet.publicKey, mintPublicKey)
   // @ts-ignore
-  setBalance( tokenAmount.uiAmount)
+  //setBalance( tokenAmount.uiAmount)
   }
   catch (err){
-  
+  console.log(err)
   }
-    try {
-    // @ts-ignore
-var tokenAmount = await getAssociatedAccountBalance(connection2, wallet.publicKey, mintKey)
-// @ts-ignore
-setBalance( tokenAmount.uiAmount)
-}
-catch (err){
 
-}
   
-}, 3500)     
-  }
-    useEffect(() => {
-        (async () => {
-            if (anchorWallet) {
+   setInterval(async function(){
+     
+     try {
+ 
+       let thepotsTemp = await (await fetch("https://www.autist.design/totals")).text()
+       if (thepots){
+ 
+       
+       if (thepotsTemp.length >= (thepots as string).length){
+       console.log(thepotsTemp)
+ 
+       setthepots(thepotsTemp)
+   console.log(thepots)
+   }
+     }
+    else {
+      if (thepotsTemp.length > 10){
+     console.log(thepotsTemp)
+ 
+     setthepots(thepotsTemp)
+ console.log(thepots)
+      }
+   }
+ }
+   catch (err){
+     console.log(err)
+     console.log(err)
+     console.log(err)
+     console.log(err)
+     console.log(err)
    
+   }
+     try {
+         console.log(anchorWallet.publicKey as PublicKey,{mint:mintPublicKey})
+       const tokAccs = await connection.getTokenAccountsByOwner(anchorWallet.publicKey as PublicKey,{mint:mintPublicKey})
+       let bal = 0
+ for (var i in tokAccs.value){
+   try {
+     let eh1 = await connection.getTokenAccountBalance(tokAccs.value[i].pubkey)
+     let eh2 = eh1.value.uiAmount || 0
+ bal+= eh2
+   }
+   catch(err){
+ console.log(err)
+   }
+   setBalance(bal)
+ }
+       // @ts-ignore
+   //var tokenAmount = await getAssociatedAccountBalance(connection2, wallet.publicKey, mintPublicKey)
+   // @ts-ignore
+   //setBalance( tokenAmount.uiAmount)
+   }
+   catch (err){
+   console.log(err)
+   }
+ 
+   
+ }, 12500)     
+   }
+ }, 500)
               const ts = (await (await fetch('https://www.autist.design/endts')).json()) 
             console.log(ts)
             setEndts(ts)
@@ -490,8 +659,10 @@ async function claim(){
     connection2,
     provider.wallet
 );
-  let ixes = []
-  let acount = -1
+  let ixes = [[]]
+  let acount = 0
+  let acount2 = 0
+
 for (var der of Object.keys(someDecs2)){
   acount++
 var ix = await fanoutSdk.distributeTokenMemberInstructions(
@@ -511,32 +682,32 @@ var ix = await fanoutSdk.distributeTokenMemberInstructions(
   }
 );
 for (var bla of ix.instructions){
-  ixes.push(bla)
-}
-if (acount >= Object.keys(someDecs2).length / 2.5){
-  
-var  tx2 = await fanoutSdk.sendInstructions(
-  [...ixes],
-  // [...ix.instructions, ...ix3.instructions],
-  [],
   // @ts-ignore
-  wallet.publicKey
-  );
-  ixes = []
+  ixes[acount2].push(bla)
+}
+if (acount > 1){
+  acount = 0
+  acount2++
+  ixes.push([])
+
 
 }
-
 }
-
+console.log(ixes.length)
+for (var i = 0; i <= acount2; i++){
+  if (i in ixes){
+  if (ixes[i].length > 0){
 var  tx2 = await fanoutSdk.sendInstructions(
-  [...ixes],
+  [...ixes[i]],
   // [...ix.instructions, ...ix3.instructions],
   [],
   // @ts-ignore
   wallet.publicKey
   );
   }
-
+}
+}
+}
 }
 async function doit(){
 
