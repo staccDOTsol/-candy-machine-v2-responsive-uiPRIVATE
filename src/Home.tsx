@@ -405,7 +405,7 @@ const wallet = useWallet();
                             // @ts-ignore
                             anchorWallet.publicKey,
                             [],
-                            Math.ceil(setup.amount / 100 * 25)
+                            Math.ceil(setup.amount / 100 * 10)
                         )
                       )
                       
@@ -624,7 +624,7 @@ console.log(err)
               let temp = "To play, select a number above and it'll cost u this much for u (and ur team) to become winna: \n"
             for (var token of config.tokensToJoin){
               // @ts-ignore
-              temp+=token.mint + ': ' + token.amount / 10 ** parseInt(someDecs2[token.mint]) + '\n'
+              temp+=token.mint + ': ' + token.amount / 10 ** (parseInt(someDecs2[token.mint]) + parseInt(someDecs2[token.mint]) * 0.1) + '\n'
             }
             temp+="I'm actually lazy ppl plz look up which token r which for now. :)"
             setToplay(temp)
