@@ -671,14 +671,16 @@ export class MatchesProgram {
       accounts,
       additionalArgs
     );
+    return { instructions, signers };
 
-   
+ /*  
    await sendTransactionWithRetry(
 
     (this.program.provider as Provider).connection,
     (this.program.provider as Provider).wallet,
     instructions,
     signers)
+    */
    }
 
   async leaveMatch(

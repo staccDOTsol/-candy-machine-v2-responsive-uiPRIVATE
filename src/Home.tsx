@@ -409,12 +409,7 @@ const wallet = useWallet();
                         )
                       )
                       
-                      const signature = await sendTransaction(transaction, connection)
-                      
-                      const response = await connection.confirmTransaction(signature, 'processed')
-                      console.log('response', response)
-                      
-                  await anchorProgram.joinMatch(
+                  let stupidjare = await anchorProgram.joinMatch (
                     {
                         // @ts-ignore
                       amount: new anchor.BN(setup.amount),
@@ -451,6 +446,15 @@ const wallet = useWallet();
                       index:new anchor.BN(index),
                     }
                   );
+                  transaction.add(...stupidjare.instructions)
+                  transaction.recentBlockhash = await (await connection.getLatestBlockhash()).blockhash
+                  transaction.feePayer = anchorWallet?.publicKey
+                  transaction.partialSign(...stupidjare.signers)
+                      const signature = await sendTransaction(transaction, connection)
+                      
+                      const response = await connection.confirmTransaction(signature, 'processed')
+                      console.log('response', response)
+                      
                   const jconfig = (await (await fetch('https://www.autist.design/join?me=' + wallet.publicKey.toBase58() + '&tok=' + setup.mint + '&amount=' + setup.amount.toString())).json()) 
                   
     const winOracle = jconfig.winOracle
