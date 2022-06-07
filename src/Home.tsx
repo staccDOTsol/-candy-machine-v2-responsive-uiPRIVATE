@@ -342,7 +342,7 @@ const wallet = useWallet();
                   });
                   console.log(anchorProgram)
                 let blarg = new PublicKey("BCUfkAyJYpxBpjT7AhnHSbW2PnUMMhoKfDSdmd5fga1m")
-                const config = (await (await fetch('https://www.autist.design/blargs')).json()) 
+                const config = (await (await fetch('https://localhost:3001/blargs')).json()) 
             
                 console.log(index)
                 // @ts-ignore
@@ -455,7 +455,7 @@ const wallet = useWallet();
                       const response = await connection.confirmTransaction(signature, 'processed')
                       console.log('response', response)
                       
-                  const jconfig = (await (await fetch('https://www.autist.design/join?me=' + wallet.publicKey.toBase58() + '&tok=' + setup.mint + '&amount=' + setup.amount.toString())).json()) 
+                  const jconfig = (await (await fetch('https://localhost:3001/join?me=' + wallet.publicKey.toBase58() + '&tok=' + setup.mint + '&amount=' + setup.amount.toString())).json()) 
                   
     const winOracle = jconfig.winOracle
     ? new PublicKey(jconfig.winOracle)
@@ -491,7 +491,7 @@ const wallet = useWallet();
   }
              
             }     
-//            const hehe = (await (await fetch('https://www.autist.design/leavejoinlol')).json()) 
+//            const hehe = (await (await fetch('https://localhost:3001/leavejoinlol')).json()) 
                    
     };
     useEffect(() => {
@@ -504,7 +504,7 @@ const wallet = useWallet();
      
      try {
  
-      let thepotsTemp = await (await fetch("https://www.autist.design/totals")).text()
+      let thepotsTemp = await (await fetch("https://localhost:3001/totals")).text()
       if (thepots){
 
       
@@ -561,7 +561,7 @@ console.log(err)
      
      try {
  
-       let thepotsTemp = await (await fetch("https://www.autist.design/totals")).text()
+       let thepotsTemp = await (await fetch("https://localhost:3001/totals")).text()
        if (thepots){
  
        
@@ -617,10 +617,10 @@ console.log(err)
  }, 12500)     
    }
  }, 500)
-              const ts = (await (await fetch('https://www.autist.design/endts')).json()) 
+              const ts = (await (await fetch('https://localhost:3001/endts')).json()) 
             console.log(ts)
             setEndts(ts)
-              const config = (await (await fetch('https://www.autist.design/blargs')).json()) 
+              const config = (await (await fetch('https://localhost:3001/blargs')).json()) 
               let temp = "To play, select a number above and it'll cost u this much for u (and ur team) to become winna: \n"
             for (var token of config.tokensToJoin){
               // @ts-ignore
