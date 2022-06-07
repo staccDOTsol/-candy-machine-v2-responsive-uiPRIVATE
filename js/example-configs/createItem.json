@@ -1,0 +1,24 @@
+{
+  "newItemMint": "2BFeWV3n6zQkFDYMvsfNLoQFzTCcrKrcRW1jctniJQE5",
+  "itemClassMint": "Hz5x6myaWWSKKzAhh2LHA5YmXExLiyTfj89S9zXyT17M",
+  "amountToMake": 1,
+  "namespaceIndex": null,
+  "buildPermissivenessToUse": { "tokenHolder": true },
+  "classIndex": 13,
+  "newItemIndex": 14,
+  "craftEscrowIndex": 4,
+  "componentScope": "set1",
+  "parent": null,
+  "originator": "44kiGWWsSgdqPMvmqYgTS78Mx2BKCWzduATkfY4biU97",
+  "merkleInfo": null,
+  "totalSpaceBytes": 200,
+  "storeMetadataFields": false,
+  "storeMint": false,
+  "metadataUpdateAuthority": "44kiGWWsSgdqPMvmqYgTS78Mx2BKCWzduATkfY4biU97",
+  "components": [
+    {
+      "mint": "Gqf4yMZxxetWSKAuSH8uintcquhFfRkGogXfRtcYSbDt",
+      "index": 1
+    }
+  ]
+}

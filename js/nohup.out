@@ -1,0 +1,26 @@
+yarn run v1.22.18
+$ /Users/stacc/candy-machine-v2-responsive-ui/js/node_modules/.bin/ts-node server.ts
+node:internal/modules/cjs/loader:936
+  throw err;
+  ^
+
+Error: Cannot find module './util'
+Require stack:
+- /Users/stacc/candy-machine-v2-responsive-ui/js/node_modules/.bin/ts-node
+    at Function.Module._resolveFilename (node:internal/modules/cjs/loader:933:15)
+    at Function.Module._load (node:internal/modules/cjs/loader:778:27)
+    at Module.require (node:internal/modules/cjs/loader:1005:19)
+    at require (node:internal/modules/cjs/helpers:102:18)
+    at Object.<anonymous> (/Users/stacc/candy-machine-v2-responsive-ui/js/node_modules/.bin/ts-node:9:16)
+    at Module._compile (node:internal/modules/cjs/loader:1105:14)
+    at Object.Module._extensions..js (node:internal/modules/cjs/loader:1159:10)
+    at Module.load (node:internal/modules/cjs/loader:981:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:822:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:77:12) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/Users/stacc/candy-machine-v2-responsive-ui/js/node_modules/.bin/ts-node'
+  ]
+}
+error Command failed with exit code 1.
+info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command.
