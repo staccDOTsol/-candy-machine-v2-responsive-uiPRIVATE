@@ -25,7 +25,13 @@ import {CTAButton, MintButton} from './MintButton';
 
 import { TokenType } from "raindrops-cli/build/state/matches";
 import { Token, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-
+const whatToksLol = {"AD1bo7F21Cy8sfUkYXEBLJTTXA7Z8NREwMX1pZBgLakq": "LEO", 
+"Fq1ZUCxZYWcEJdtN48zmhMkpVYCYCBSrnNU351PFZwCG":"gamin",
+"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v":"USDC",
+"8HGyAAB1yoM1ttS7pXjHMa3dukTFGQggnFFH3hJZgzQh":"COPE",
+"8upjSpvjcdpuzhfR1zriwg5NXkwDruejqNE9WNbPRtyA":"GRAPE",
+"PRSMNsEPqhGVCH1TtWiJqPjJyh2cKrLostPZTNy1o5x":"PRISM", "openDKyuDPS6Ak1BuD3JtvkQGV3tzCxjpHUfe1mdC79":"OPEN"
+  }
 const someDecs2 = {"AD1bo7F21Cy8sfUkYXEBLJTTXA7Z8NREwMX1pZBgLakq":9,
 "Fq1ZUCxZYWcEJdtN48zmhMkpVYCYCBSrnNU351PFZwCG":9,
 "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v":6,
@@ -510,7 +516,13 @@ const wallet = useWallet();
       
       if (thepotsTemp.length >= (thepots as string).length){
       console.log(thepotsTemp)
-
+      for (var which in whatToksLol){
+        console.log(which)
+        // @ts-ignore
+        console.log(whatToksLol[which])
+        // @ts-ignore
+thepotsTemp = thepotsTemp.replace(which, whatToksLol[which])
+      }
       setthepots(thepotsTemp)
   console.log(thepots)
   }
@@ -518,7 +530,13 @@ const wallet = useWallet();
    else {
      if (thepotsTemp.length > 10){
     console.log(thepotsTemp)
-
+    for (var which in whatToksLol){
+      console.log(which)
+      // @ts-ignore
+      console.log(whatToksLol[which])
+      // @ts-ignore
+thepotsTemp = thepotsTemp.replace(which, whatToksLol[which])
+    }
     setthepots(thepotsTemp)
 console.log(thepots)
      }
@@ -567,7 +585,13 @@ console.log(err)
        
        if (thepotsTemp.length >= (thepots as string).length){
        console.log(thepotsTemp)
- 
+       for (var which in whatToksLol){
+        console.log(which)
+        // @ts-ignore
+        console.log(whatToksLol[which])
+        // @ts-ignore
+thepotsTemp = thepotsTemp.replace(which, whatToksLol[which])
+      }
        setthepots(thepotsTemp)
    console.log(thepots)
    }
@@ -575,7 +599,13 @@ console.log(err)
     else {
       if (thepotsTemp.length > 10){
      console.log(thepotsTemp)
- 
+     for (var which in whatToksLol){
+      console.log(which)
+      // @ts-ignore
+      console.log(whatToksLol[which])
+      // @ts-ignore
+thepotsTemp = thepotsTemp.replace(which, whatToksLol[which])
+    }
      setthepots(thepotsTemp)
  console.log(thepots)
       }
@@ -624,7 +654,7 @@ console.log(err)
               let temp = "To play, select a number above and it'll cost u this much for u (and ur team) to become winna: \n"
             for (var token of config.tokensToJoin){
               // @ts-ignore
-              temp+=token.mint + ': ' + token.amount / 10 ** (parseInt(someDecs2[token.mint]) + parseInt(someDecs2[token.mint]) * 0.1) + '\n'
+              temp+= whatToksLol[token.mint] + ': ' + token.amount / 10 ** (parseInt(someDecs2[token.mint]) + parseInt(someDecs2[token.mint]) * 0.1) + '\n'
             }
             temp+="I'm actually lazy ppl plz look up which token r which for now. :)"
             setToplay(temp)
