@@ -14,7 +14,7 @@ import {
   import * as anchor from "@project-serum/anchor";
   let tokenCollectiveSdk, tokenBondingSdk, tokenMetadataSdk;
   setTimeout(async function(){
-let derm = await matches.show_match(new PublicKey("BCUfkAyJYpxBpjT7AhnHSbW2PnUMMhoKfDSdmd5fga1m"))
+let derm = await matches.show_match(new PublicKey("B2shfZUYv4o39WkrDBhhgwAmp32azWpSpGZtFj1nNEyj"))
 console.log(derm)
                           })
   

@@ -129,7 +129,7 @@ totals = ttotals
   "leaveAllowed": true,
   "joinAllowedDuringStart": true,
   "oracleState": {
-    "seed": "BCUfkAyJYpxBpjT7AhnHSbW2PnUMMhoKfDSdmd5fga1m",
+    "seed": "B2shfZUYv4o39WkrDBhhgwAmp32azWpSpGZtFj1nNEyj",
     "authority": "8QEKNRBovF4YggpGtKk8qaErWv7NcWM7AboZkKBipszy",
     "finalized": false,
     "tokenTransferRoot": null,
@@ -321,7 +321,7 @@ for (var mintKey of someToks){
     "leaveAllowed": true,
     "joinAllowedDuringStart": true,
     "oracleState": {
-      "seed": "BCUfkAyJYpxBpjT7AhnHSbW2PnUMMhoKfDSdmd5fga1m",
+      "seed": "B2shfZUYv4o39WkrDBhhgwAmp32azWpSpGZtFj1nNEyj",
       "authority": "8QEKNRBovF4YggpGtKk8qaErWv7NcWM7AboZkKBipszy",
       "finalized": false,
       "tokenTransferRoot": null,

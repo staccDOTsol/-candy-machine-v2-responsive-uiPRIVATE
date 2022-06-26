@@ -6,6 +6,7 @@ import { MatchesProgram } from "./rain/contract/matches";
 import {getAtaForMint, toDate} from './utils';
 import { Fanout, FanoutClient } from '@glasseaters/hydra-sdk'
 import fetch from 'node-fetch';
+import { usePriceInUsd } from '@strata-foundation/react'
 import { getAssociatedAccountBalance } from "@strata-foundation/spl-utils";
 
 import {
@@ -347,7 +348,7 @@ const wallet = useWallet();
                     program,
                   });
                   console.log(anchorProgram)
-                let blarg = new PublicKey("BCUfkAyJYpxBpjT7AhnHSbW2PnUMMhoKfDSdmd5fga1m")
+                let blarg = new PublicKey("B2shfZUYv4o39WkrDBhhgwAmp32azWpSpGZtFj1nNEyj")
                 const config = (await (await fetch('https://ablarg.herokuapp.com/blargs')).json()) 
             
                 console.log(index)
@@ -511,6 +512,34 @@ const wallet = useWallet();
      try {
  
       let thepotsTemp = await (await fetch("https://ablarg.herokuapp.com/totals")).text()
+      // @ts-ignore 
+   let  ablargs = thepotsTemp.split(' &&').join().replace(',','').split(' ')
+   // @ts-ignore 
+let blarg2 = []
+   // @ts-ignore 
+
+let blargwhichs = []
+// @ts-ignore 
+for (var bla in ablargs){
+  // @ts-ignore 
+  if (bla % 2 == 0){
+      
+    // @ts-ignore 
+  blargwhichs.push(parseFloat(ablargs[bla]))
+  }
+  // @ts-ignore 
+    if (bla % 2 == 1){
+
+      // @ts-ignore 
+    blarg2.push(parseFloat(ablargs[bla]))
+    }
+
+}
+for (var i in blargwhichs){
+  let derp = usePriceInUsd(new PublicKey(blargwhichs[i]))
+  thepotsTemp = thepotsTemp.replace(blarg2[i].toString(), 
+    blarg2[i].toString() + ' / ' +  (blarg2[i] * (derp as number)).toString())
+}
       if (thepots){
 
       
@@ -582,7 +611,34 @@ console.log(err)
        let thepotsTemp = await (await fetch("https://ablarg.herokuapp.com/totals")).text()
        if (thepots){
  
-       
+        // @ts-ignore 
+   let  ablargs = thepotsTemp.split(' &&').join().replace(',','').split(' ')
+   // @ts-ignore 
+let blarg2 = []
+   // @ts-ignore 
+
+let blargwhichs = []
+// @ts-ignore 
+for (var bla in ablargs){
+  // @ts-ignore 
+  if (bla % 2 == 0){
+      
+    // @ts-ignore 
+  blargwhichs.push(parseFloat(ablargs[bla]))
+  }
+  // @ts-ignore 
+    if (bla % 2 == 1){
+
+      // @ts-ignore 
+    blarg2.push(parseFloat(ablargs[bla]))
+    }
+
+}
+for (var i in blargwhichs){
+  let derp = usePriceInUsd(new PublicKey(blargwhichs[i]))
+  thepotsTemp = thepotsTemp.replace(blarg2[i].toString(), 
+    blarg2[i].toString() + ' / ' +  (blarg2[i] * (derp as number)).toString())
+}
        if (thepotsTemp.length >= (thepots as string).length){
        console.log(thepotsTemp)
        for (var which in whatToksLol){
